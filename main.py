@@ -224,7 +224,7 @@ def finetuning(model, X_train, y_train, epochs=10):
 def main(args):
     np.random.seed(2)
     save_dir = f'pruned_models/{args.architecture}'
-    
+    save_dir.mkdir(exist_ok=True)
 
     rl.architecture_name = args.architecture
     debug = args.debug
@@ -234,6 +234,20 @@ def main(args):
 
     X_train = X_train.astype('float32') / 255
     X_test = X_test.astype('float32') / 255
+
+    randgen = np.random.default_rng(seed=0)
+    idx_samples_available = np.arange(len(X_train))
+    idx_samples_available = randgen.permuted(idx_samples_available)
+    n_train = int(len(X_train) * args.percent_samples_cka / 100)
+    idx_train = idx_samples_available[:n_train]
+    idx_val = idx_samples_available[n_train:]
+
+    X_train_mean = np.mean(X_train, axis=0)
+
+    X_val = X_train[idx_val]
+    y_val = y_train[idx_val]
+    X_train = X_train[idx_train]
+    y_train = y_train[idx_train]
 
     X_train_mean = np.mean(X_train, axis=0)
     X_train -= X_train_mean
@@ -265,7 +279,7 @@ def main(args):
         i = i + 1
         allowed_layers = rl.blocks_to_prune(model)
         layer_method = CKA()
-        scores = layer_method.scores(model, X_train, y_train, allowed_layers, kernel_trick=args.kernel_trick)
+        scores = layer_method.scores(model, X_val, y_val, allowed_layers, kernel_trick=args.kernel_trick)
         model = rl.rebuild_network(model, scores, p_layer=1)
         model = finetuning(model, X_train, y_train, epochs=epochs_apply)
         statistics(model, i, X_test=X_test, y_test=y_test)
@@ -278,5 +292,6 @@ if __name__ == '__main__':
     parser.add_argument('--kernel_trick', type=lambda s: s.lower() in ('true','1','yes','y'), default=False, help='Whether to use the kernel trick in CKA computation (True/False)')
     parser.add_argument('--num_iterations', type=int, default=10, help='Number of pruning iterations to perform')
     parser.add_argument('--epochs_apply', type=int, default=200, help='Number of epochs to apply during finetuning after pruning')
+    parser.add_argument('--percent_samples_cka', type=int, default=10, help='Percentage of samples to use for CKA computation')
     args = parser.parse_args()
     main(args)
