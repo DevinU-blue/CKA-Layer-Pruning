@@ -74,7 +74,7 @@ class CKA():
 
 def load_model(architecture_file='', weights_file=''):
     import tensorflow.keras as keras
-    from keras.utils.generic_utils import CustomObjectScope
+    from tensorflow.keras.utils import CustomObjectScope
     from keras import backend as K
     from tensorflow.keras import layers
 
@@ -153,7 +153,7 @@ def statistics(model, i):
 
 
 def finetuning(model, X_train, y_train):
-    sgd = keras.optimizers.SGD(learning_rate=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+    sgd = keras.optimizers.legacy.SGD(learning_rate=0.01, decay=1e-6, momentum=0.9, nesterov=True)
     model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=['accuracy'])
 
     model.fit(X_train, y_train, batch_size=128, verbose=0, epochs=10)
