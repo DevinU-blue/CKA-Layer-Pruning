@@ -234,7 +234,7 @@ def main(args):
 
     statistics(model, 'Unpruned')
 
-    for i in range(10):
+    for i in range(args.num_iterations):
 
         allowed_layers = rl.blocks_to_prune(model)
         layer_method = CKA()
@@ -248,6 +248,6 @@ if __name__ == '__main__':
     parser.add_argument('--architecture', type=str, default='ResNet56', help='Architecture to prune')
     parser.add_argument('--debug', type=lambda s: s.lower() in ('true','1','yes','y'), default=False, help='Whether to use debug mode with a subset of the data (True/False)')
     parser.add_argument('--kernel_trick', type=lambda s: s.lower() in ('true','1','yes','y'), default=False, help='Whether to use the kernel trick in CKA computation (True/False)')
-
+    parser.add_argument('--num_iterations', type=int, default=10, help='Number of pruning iterations to perform')
     args = parser.parse_args()
     main(args)
