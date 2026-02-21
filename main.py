@@ -92,6 +92,7 @@ class CKA():
 
             score = self.feature_space_linear_cka(features_F, features_line, kernel_trick=kernel_trick)
             output.append((layer_idx, 1 - score))
+            del features_line
 
         return output
 
@@ -239,7 +240,7 @@ def main(args):
     randgen = np.random.default_rng(seed=0)
     idx_samples_available = np.arange(len(X_train))
     idx_samples_available = randgen.permuted(idx_samples_available)
-    n_train = int(len(X_train) * args.percent_samples_cka / 100)
+    n_train = int(len(X_train) * (1 - args.percent_samples_cka / 100))
     idx_train = idx_samples_available[:n_train]
     idx_val = idx_samples_available[n_train:]
 
