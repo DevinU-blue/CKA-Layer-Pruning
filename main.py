@@ -293,6 +293,7 @@ def main(args):
             X_val = X_train
             y_val = y_train
         scores = layer_method.scores(model, X_val, y_val, allowed_layers, kernel_trick=args.kernel_trick)
+        print(f'Scores: {scores}')
         model = rl.rebuild_network(model, scores, p_layer=1)
         model = finetuning(model, X_train, y_train, epochs=epochs_apply)
         statistics(model, i, X_test=X_test, y_test=y_test)
