@@ -228,7 +228,7 @@ def main(args):
 
     rl.architecture_name = args.architecture
     debug = args.debug
-    epochs_apply = 200
+    epochs_apply = args.epochs_apply
 
     (X_train, y_train), (X_test, y_test) = keras.datasets.cifar10.load_data()
 
@@ -277,5 +277,6 @@ if __name__ == '__main__':
     parser.add_argument('--debug', type=lambda s: s.lower() in ('true','1','yes','y'), default=False, help='Whether to use debug mode with a subset of the data (True/False)')
     parser.add_argument('--kernel_trick', type=lambda s: s.lower() in ('true','1','yes','y'), default=False, help='Whether to use the kernel trick in CKA computation (True/False)')
     parser.add_argument('--num_iterations', type=int, default=10, help='Number of pruning iterations to perform')
+    parser.add_argument('--epochs_apply', type=int, default=200, help='Number of epochs to apply during finetuning after pruning')
     args = parser.parse_args()
     main(args)
