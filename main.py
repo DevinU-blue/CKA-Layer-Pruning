@@ -166,11 +166,14 @@ def compute_flops(model):
 
     return total_flops, flops_per_layer
 
-def statistics(model, i):
+def statistics(model, i, X_test=None, y_test=None):
     flops, _ = compute_flops(model)
     blocks = rl.count_blocks(model)
 
     print('Iteration [{}] Blocks {} FLOPS [{}]'.format(i, blocks, flops), flush=True)
+    if X_test is not None and y_test is not None:
+        score = model.evaluate(X_test, y_test, verbose=0)
+        print('Test accuracy: {}'.format(score[1]), flush=True)
 
 
 def finetuning(model, X_train, y_train, epochs=10):
@@ -194,10 +197,18 @@ def finetuning(model, X_train, y_train, epochs=10):
     lr_callback = keras.callbacks.LearningRateScheduler(lr_scheduler)
     train_model.fit(X_train, y_train, batch_size=128, verbose=0, epochs=epochs, callbacks=[lr_callback])
 
+        # Ensure the original model is compiled as well so it can be used for further training/testing
+    try:
+        original_model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=['accuracy'])
+    except Exception:
+        # If compile fails for any reason, ignore and still return original model
+        pass
+
     return original_model
 
 def main(args):
     np.random.seed(2)
+    save_dir = f'pruned_models/{args.architecture}'
 
     rl.architecture_name = args.architecture
     debug = args.debug
@@ -232,16 +243,16 @@ def main(args):
 
     model = finetuning(model, X_train, y_train, epochs=epochs_apply)
 
-    statistics(model, 'Unpruned')
+    statistics(model, 'Unpruned', X_test=X_test, y_test=y_test)
 
     for i in range(args.num_iterations):
 
         allowed_layers = rl.blocks_to_prune(model)
         layer_method = CKA()
         scores = layer_method.scores(model, X_train, y_train, allowed_layers, kernel_trick=args.kernel_trick)
-        model = finetuning(model, X_train, y_train, epochs=epochs_apply)
         model = rl.rebuild_network(model, scores, p_layer=1)
-        statistics(model, i)
+        model = finetuning(model, X_train, y_train, epochs=epochs_apply)
+        statistics(model, i, X_test=X_test, y_test=y_test)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
