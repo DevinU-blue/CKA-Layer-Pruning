@@ -11,7 +11,8 @@ import rebuild_layers as rl
 import template_architectures
 import random
 import argparse
-import os
+import os 
+from pathlib import Path
 
 class CKA():
     __name__ = 'CKA'
@@ -223,7 +224,7 @@ def finetuning(model, X_train, y_train, epochs=10):
 
 def main(args):
     np.random.seed(2)
-    save_dir = f'pruned_models/{args.architecture}'
+    save_dir = Path(f'pruned_models/{args.architecture}')
     save_dir.mkdir(exist_ok=True)
 
     rl.architecture_name = args.architecture
