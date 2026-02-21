@@ -11,6 +11,7 @@ import rebuild_layers as rl
 import template_architectures
 import random
 import argparse
+import os
 
 class CKA():
     __name__ = 'CKA'
@@ -175,6 +176,20 @@ def statistics(model, i, X_test=None, y_test=None):
         score = model.evaluate(X_test, y_test, verbose=0)
         print('Test accuracy: {}'.format(score[1]), flush=True)
 
+def save_model(model, args, i, save_dir):
+    try:        
+        import os
+        os.makedirs(save_dir, exist_ok=True)
+        p_layer = 1   # from rebuild_network call
+        arch_filename = f"{save_dir}/{args.architecture}_CKA_p[{p_layer}]_iterations[{i}].json"
+        weights_filename = f"{save_dir}/{args.architecture}_CKA_p[{p_layer}]_iterations[{i}].h5"
+
+        with open(arch_filename, 'w') as f:
+            f.write(model.to_json())
+        model.save_weights(weights_filename)
+        print(f"Saved model to {arch_filename} and {weights_filename}")
+    except Exception as e:
+        print(f"Error saving model: {e}", flush=True)
 
 def finetuning(model, X_train, y_train, epochs=10):
     def lr_scheduler(epoch, lr):
@@ -209,6 +224,7 @@ def finetuning(model, X_train, y_train, epochs=10):
 def main(args):
     np.random.seed(2)
     save_dir = f'pruned_models/{args.architecture}'
+    
 
     rl.architecture_name = args.architecture
     debug = args.debug
@@ -242,17 +258,18 @@ def main(args):
 
 
     model = finetuning(model, X_train, y_train, epochs=epochs_apply)
-
+    save_model(model, args, 0, save_dir)
     statistics(model, 'Unpruned', X_test=X_test, y_test=y_test)
 
     for i in range(args.num_iterations):
-
+        i = i + 1
         allowed_layers = rl.blocks_to_prune(model)
         layer_method = CKA()
         scores = layer_method.scores(model, X_train, y_train, allowed_layers, kernel_trick=args.kernel_trick)
         model = rl.rebuild_network(model, scores, p_layer=1)
         model = finetuning(model, X_train, y_train, epochs=epochs_apply)
         statistics(model, i, X_test=X_test, y_test=y_test)
+        save_model(model, args, i, save_dir)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
