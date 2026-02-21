@@ -33,7 +33,6 @@ class CKA():
 
             if debiased:
                 n = features_x.shape[0]
-                # Equivalent to np.sum(features_x ** 2, 1) but avoids an intermediate array.
                 sum_squared_rows_x = np.einsum('ij,ij->i', features_x, features_x)
                 sum_squared_rows_y = np.einsum('ij,ij->i', features_y, features_y)
                 squared_norm_x = np.sum(sum_squared_rows_x)
@@ -53,12 +52,11 @@ class CKA():
         else:
             K = features_x @ features_x.T   # shape (n, n)
             L = features_y @ features_y.T   # shape (n, n)
-            n = K.shape[0]
 
-            # Center the kernel matrices
-            ones = np.ones((n, n)) / n
-            K_centered = K - ones @ K - K @ ones + ones @ K @ ones
-            L_centered = L - ones @ L - L @ ones + ones @ L @ ones
+            # OPTIM_1: Center the kernel matrices bằng Broadcasting thay vì nhân ma trận O(n^3)
+            # Nhanh hơn và tiết kiệm bộ nhớ hơn so với việc dùng ma trận "ones"
+            K_centered = K - K.mean(axis=0, keepdims=True) - K.mean(axis=1, keepdims=True) + K.mean()
+            L_centered = L - L.mean(axis=0, keepdims=True) - L.mean(axis=1, keepdims=True) + L.mean()
 
             # Frobenius inner product and norms
             similarity = np.sum(K_centered * L_centered)          # trace(K_centered.T @ L_centered)
@@ -77,21 +75,28 @@ class CKA():
         features_F = F.predict(X_train, verbose=0)
 
         F_line = Model(model.input, model.get_layer(index=-2).output)
+        
         for layer_idx in allowed_layers:
             _layer = F_line.get_layer(index=layer_idx - 1)
-            _w = _layer.get_weights()
-            _w_original = copy.deepcopy(_w)
+            
+            # OPTIM_2: Bỏ copy.deepcopy, dùng list comprehension lấy .copy() của numpy array
+            _w_original = [w.copy() for w in _layer.get_weights()]
+            
+            # OPTIM_3: Tạo trực tiếp danh sách mảng 0 thay vì dùng vòng lặp for gán lại
+            _w_zero = [np.zeros_like(w) for w in _w_original]
 
-            for i in range(0, len(_w)):
-                _w[i] = np.zeros(_w[i].shape)
-
-            _layer.set_weights(_w)
+            # Gán trọng số bằng 0
+            _layer.set_weights(_w_zero)
+            
+            # Predict với layer đã bị "cắt"
             features_line = F_line.predict(X_train, verbose=0)
 
+            # Trả lại trọng số ban đầu
             _layer.set_weights(_w_original)
 
             score = self.feature_space_linear_cka(features_F, features_line, kernel_trick=kernel_trick)
             output.append((layer_idx, 1 - score))
+            
             del features_line
 
         return output
