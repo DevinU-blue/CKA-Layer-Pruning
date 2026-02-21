@@ -242,19 +242,22 @@ def main(args):
     X_train = X_train.astype('float32') / 255
     X_test = X_test.astype('float32') / 255
 
-    randgen = np.random.default_rng(seed=0)
-    idx_samples_available = np.arange(len(X_train))
-    idx_samples_available = randgen.permuted(idx_samples_available)
-    n_train = int(len(X_train) * (1 - args.percent_samples_cka / 100))
-    idx_train = idx_samples_available[:n_train]
-    idx_val = idx_samples_available[n_train:]
+    if args.percent_samples_cka != 100:
+        print(f"Using only {args.percent_samples_cka}% of samples for CKA computation")
 
-    X_train_mean = np.mean(X_train, axis=0)
+        randgen = np.random.default_rng(seed=0)
+        idx_samples_available = np.arange(len(X_train))
+        idx_samples_available = randgen.permuted(idx_samples_available)
+        n_train = int(len(X_train) * (1 - args.percent_samples_cka / 100))
+        idx_train = idx_samples_available[:n_train]
+        idx_val = idx_samples_available[n_train:]
 
-    X_val = X_train[idx_val]
-    y_val = y_train[idx_val]
-    X_train = X_train[idx_train]
-    y_train = y_train[idx_train]
+        X_train_mean = np.mean(X_train, axis=0)
+
+        X_val = X_train[idx_val]
+        y_val = y_train[idx_val]
+        X_train = X_train[idx_train]
+        y_train = y_train[idx_train]
 
     X_train_mean = np.mean(X_train, axis=0)
     X_train -= X_train_mean
@@ -286,6 +289,9 @@ def main(args):
         i = i + 1
         allowed_layers = rl.blocks_to_prune(model)
         layer_method = CKA()
+        if args.percent_samples_cka == 100:
+            X_val = X_train
+            y_val = y_train
         scores = layer_method.scores(model, X_val, y_val, allowed_layers, kernel_trick=args.kernel_trick)
         model = rl.rebuild_network(model, scores, p_layer=1)
         model = finetuning(model, X_train, y_train, epochs=epochs_apply)
